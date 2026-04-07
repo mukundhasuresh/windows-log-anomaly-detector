@@ -12,17 +12,12 @@ import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-import os
+import sys, os
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-
-try:
-    from log_reader import LogReader
-    from anomaly_detector import AnomalyDetector
-    from alerts import AlertManager
-except ImportError:
-    from src.log_reader import LogReader
-    from src.anomaly_detector import AnomalyDetector
-    from src.alerts import AlertManager
+from log_reader import LogReader
+from anomaly_detector import AnomalyDetector
+from alerts import AlertManager
 
 # Page config
 st.set_page_config(

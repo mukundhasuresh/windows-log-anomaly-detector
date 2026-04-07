@@ -3,12 +3,17 @@ log_reader.py: Reads Windows event logs using pywin32, parses them into pandas D
 Handles different log types like System, Application, Security.
 """
 
-import win32evtlog
 import pandas as pd
-import win32evtlogutil
 import re
 from typing import List, Dict
 import datetime
+
+try:
+    import win32evtlog
+    import win32evtlogutil
+    HAS_WIN32 = True
+except ImportError:
+    HAS_WIN32 = False
 
 class LogReader:
     """
@@ -29,6 +34,8 @@ class LogReader:
         
         Handles permission/empty logs.
         """
+        if not HAS_WIN32:
+            raise RuntimeError('Windows only - pywin32 required')
         events_data = []
         try:
             hand = win32evtlog.OpenEventLog(None, self.log_type)

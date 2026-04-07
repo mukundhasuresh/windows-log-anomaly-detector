@@ -10,7 +10,12 @@ from collections import defaultdict
 import rich.console
 from rich.table import Table
 from rich import box
-from plyer import notification
+
+try:
+    from plyer import notification
+    HAS_PLYER = True
+except ImportError:
+    HAS_PLYER = False
 
 class AlertManager:
     """
@@ -85,6 +90,9 @@ class AlertManager:
 
     def notify_high(self, high_alerts: list):
         """Send desktop notification for HIGH alerts."""
+        if not HAS_PLYER:
+            print(f"HIGH alerts: {len(high_alerts)} events (desktop notification skipped)")
+            return
         title = f"HIGH Severity Alert - {len(high_alerts)} events"
         message = "\\n".join([f"Event {a['event_id']} for {a['username']} from {a['source_ip']}" for a in high_alerts[:3]])
         notification.notify(
