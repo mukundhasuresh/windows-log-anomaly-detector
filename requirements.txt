@@ -4,3 +4,5 @@ scikit-learn
 streamlit
 pytz
 joblib
+rich
+plyer

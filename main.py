@@ -6,14 +6,14 @@ Orchestrates log reading, anomaly detection, alerting, and dashboard.
 import pandas as pd
 from src.log_reader import LogReader
 from src.anomaly_detector import AnomalyDetector
-from src.alerts import send_alert, setup_alert_channel
+from src.alerts import AlertManager
 from src.dashboard import run_dashboard
 
 def main():
     """Run the full pipeline."""
     print("Starting Windows Log Anomaly Detector...")
     
-    # Read logs using LogReader
+    # Read logs
     print("Reading Security logs...")
     log_reader = LogReader()
     try:
@@ -35,24 +35,18 @@ def main():
     print("Detecting anomalies...")
     anomalies = detector.detect(log_df)
     
-    # Alert
-    setup_alert_channel("console")
-    if len(anomalies) > 0:
-        print(f"Found {len(anomalies)} anomalies.")
-        send_alert(anomalies)
-    else:
-        print("No anomalies detected.")
+    # Alerts
+    alert_manager = AlertManager()
+    alert_manager.process_anomalies(anomalies)
     
-    # Export baseline
+    # Export
     try:
         log_reader.export_baseline()
     except:
         print("Export skipped.")
     
-    # Dashboard
-    # run_dashboard()  # Uncomment to launch
-    
     print("Pipeline complete.")
 
 if __name__ == "__main__":
     main()
+
