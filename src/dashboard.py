@@ -68,13 +68,14 @@ def try_load_live():
 
 def generate_dummy_data():
     now = datetime.now()
+    n = 200
     dummy_log = pd.DataFrame({
-        'timestamp': pd.date_range(now - timedelta(hours=6), now, periods=200),
-        'event_id': [4624, 4625, 4672, 4720]*50,
-        'source_ip': [f"192.168.1.{i%25}" for i in range(200)],
-        'username': [f"user{i%10}" for i in range(200)],
-        'logon_type': [2, 10, 8]*67,
-        'status': (['failed']*60 + ['success']*140)
+        'timestamp': pd.date_range(now - timedelta(hours=6), now, periods=n),
+        'event_id': [4624, 4625, 4672, 4720] * (n//4),
+        'source_ip': [f"192.168.1.{i%25}" for i in range(n)],
+        'username': [f"user{i%10}" for i in range(n)],
+        'logon_type': [2, 10, 8, 2] * (n//4),
+        'status': ['failed'] * 60 + ['success'] * 140
     })
     detector = AnomalyDetector(0.1)
     labeled = detector.fit(dummy_log)
@@ -151,7 +152,7 @@ if not filtered_anoms.empty:
     display_df['severity'] = ['HIGH' if e in [4720,4740] else 'MEDIUM' if e in [4672,4625] else 'LOW' for e in display_df['event_id']]
     st.dataframe(
         display_df,
-        column_config={"severity": st.column_config.SelectboxColumn("Severity", options=['LOW','MEDIUM','HIGH'])},
+        column_config={"severity": st.column_config.SelectboxColumn("Severity", options=['LOW','MEDIUM','HIGH'])}, 
         use_container_width=True
     )
 else:
@@ -173,3 +174,4 @@ st.markdown("""
     <br>Built with Python • ML • Streamlit
 </div>
 """, unsafe_allow_html=True)
+
