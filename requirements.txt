@@ -1,8 +1,13 @@
-pywin32
+# Requirements for local Windows development (pywin32, plyer)
+# For Streamlit Cloud (Linux): use packages.txt (no pywin32/plyer)
+
 pandas
 scikit-learn
 streamlit
 pytz
+plotly
 joblib
 rich
-plyer
+# pywin32  # Windows-only
+# plyer    # Desktop notifications (Windows/Mac/Linux desktop only)
+

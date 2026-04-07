@@ -2,6 +2,9 @@
 dashboard.py: Impressive Streamlit dashboard with dark theme, glowing UI, metrics, charts.
 """
 
+import sys
+IS_CLOUD = sys.platform != 'win32'
+
 import streamlit as st
 import pandas as pd
 from datetime import datetime, timedelta
@@ -54,7 +57,16 @@ def load_data():
     return log_df, anomalies_df, alerts
 
 def try_load_live():
+    if IS_CLOUD:
+        return pd.DataFrame(), pd.DataFrame(), []
     try:
+        try:
+            import win32evtlog
+            HAS_WIN32 = True
+        except ImportError:
+            HAS_WIN32 = False
+        if not HAS_WIN32:
+            return pd.DataFrame(), pd.DataFrame(), []
         log_reader = LogReader()
         log_df = log_reader.read_events()
         detector = AnomalyDetector()
@@ -173,7 +185,7 @@ if st.button("🔄 **Run Detection Pipeline Now**", type="primary", use_containe
     with st.spinner('Running full detection...'):
         alert_mgr = AlertManager()
         alert_mgr.process_anomalies(filtered_anoms)
-        st.success("✅ Pipeline executed! Check new alerts.")
+        st.success("Pipeline executed! Check new alerts.")
 
 # Footer
 st.markdown("---")
