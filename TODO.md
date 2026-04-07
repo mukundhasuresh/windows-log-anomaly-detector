@@ -12,7 +12,7 @@
 - [ ] Test main.py with LogReader
 - [x] Fix syntax and test LogReader standalone
 - [x] Implement LogReader class in src/log_reader.py
-- [ ] Update main.py to use LogReader
+- [x] Update main.py to use LogReader
 - [ ] streamlit run src/dashboard.py
 
 Updated after each step.
