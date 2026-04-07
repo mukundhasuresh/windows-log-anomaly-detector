@@ -8,8 +8,10 @@
 - [x] Create src/dashboard.py with header comment and stubs (run_dashboard)
 - [x] Create src/alerts.py with header comment and stubs (send_alert, setup_alert_channel)
 - [x] Create main.py with header comment, imports, and basic entrypoint calling all modules
-- [ ] Install dependencies: pip install -r requirements.txt
-- [ ] Test: python main.py (should run stubs)
-- [ ] Next: streamlit run src/dashboard.py when ready
+- [x] Install dependencies: pip install -r requirements.txt 
+- [ ] Test main.py with LogReader
+- [x] Implement LogReader class in src/log_reader.py
+- [ ] Update main.py to use LogReader
+- [ ] streamlit run src/dashboard.py
 
 Updated after each step.
