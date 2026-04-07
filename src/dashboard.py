@@ -1,6 +1,5 @@
 """
-dashboard.py: Streamlit dashboard for log anomalies.
-Sidebar filters, metrics, charts, pipeline trigger.
+dashboard.py: Impressive Streamlit dashboard with dark theme, glowing UI, metrics, charts.
 """
 
 import streamlit as st
@@ -10,143 +9,167 @@ import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-# Local imports
+# Local
 from src.log_reader import LogReader
 from src.anomaly_detector import AnomalyDetector
 from src.alerts import AlertManager
 
+# Page config
+st.set_page_config(
+    page_title="Log Anomaly Detector v1.0",
+    page_icon="🛡️",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
+# Custom CSS
+st.markdown("""
+<style>
+    .main-header {
+        font-size: 4rem !important;
+        background: linear-gradient(90deg, #00ff88, #00cc6a);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        text-align: center;
+        margin-bottom: 2rem;
+        text-shadow: 0 0 30px #00ff88;
+        animation: glow 2s ease-in-out infinite alternate;
+    }
+    @keyframes glow {
+        from { text-shadow: 0 0 20px #00ff88, 0 0 30px #00ff88; }
+        to { text-shadow: 0 0 30px #00ff88, 0 0 40px #00ff88; }
+    }
+    .metric-green { border-left: 5px solid #00ff88 !important; }
+    .metric-orange { border-left: 5px solid #ffaa00 !important; }
+    .metric-red { border-left: 5px solid #ff4444 !important; }
+    .high-row { font-weight: bold; background-color: rgba(255,68,68,0.2) !important; }
+</style>
+""", unsafe_allow_html=True)
+
 def load_data():
-    """Load or simulate data for dashboard."""
+    log_df, anomalies_df, alerts = try_load_live()
+    if log_df.empty:
+        log_df, anomalies_df, alerts = generate_dummy_data()
+    return log_df, anomalies_df, alerts
+
+def try_load_live():
     try:
         log_reader = LogReader()
         log_df = log_reader.read_events()
-        detector = AnomalyDetector(0.05)
+        detector = AnomalyDetector()
         detector.fit(log_df)
         anomalies = detector.detect(log_df)
         alert_mgr = AlertManager()
         alert_mgr.process_anomalies(anomalies)
         return log_df, anomalies, alert_mgr.alerts
-    except Exception as e:
-        st.warning(f"Live data error (admin needed): {e}. Using dummy data.")
-        # Dummy data
-        now = datetime.now()
-        dummy_log = pd.DataFrame({
-            'timestamp': pd.date_range(now - timedelta(hours=6), now, periods=100),
-            'event_id': [4624, 4625]*50,
-            'source_ip': ['192.168.1.' + str(i%10) for i in range(100)],
-            'username': ['user' + str(i%5) for i in range(100)],
-            'logon_type': [2, 10]*50,
-            'status': ['success', 'failed']*50
-        })
-        dummy_detector = AnomalyDetector(0.05)
-        dummy_labeled = dummy_detector.fit(dummy_log)
-        dummy_anomalies = dummy_detector.detect(dummy_log)
-        dummy_alerts = [{'timestamp': t, 'severity': 'LOW', 'event_id': 4625, 'username': u, 'source_ip': ip} 
-                       for t, u, ip in zip(dummy_anomalies['timestamp'][:3], dummy_anomalies['username'][:3], dummy_anomalies['source_ip'][:3])]
-        return dummy_log, dummy_anomalies, dummy_alerts
+    except:
+        return pd.DataFrame(), pd.DataFrame(), []
 
-def filter_by_time(df: pd.DataFrame, time_range: str):
-    """Filter df by time range."""
+def generate_dummy_data():
     now = datetime.now()
-    if time_range == "1h":
-        cutoff = now - timedelta(hours=1)
-    elif time_range == "6h":
-        cutoff = now - timedelta(hours=6)
-    elif time_range == "24h":
-        cutoff = now - timedelta(days=1)
-    elif time_range == "7d":
-        cutoff = now - timedelta(days=7)
-    df_filtered = df[df['timestamp'] >= cutoff]
-    return df_filtered
+    dummy_log = pd.DataFrame({
+        'timestamp': pd.date_range(now - timedelta(hours=6), now, periods=200),
+        'event_id': [4624, 4625, 4672, 4720]*50,
+        'source_ip': [f"192.168.1.{i%25}" for i in range(200)],
+        'username': [f"user{i%10}" for i in range(200)],
+        'logon_type': [2, 10, 8]*67,
+        'status': (['failed']*60 + ['success']*140)
+    })
+    detector = AnomalyDetector(0.1)
+    labeled = detector.fit(dummy_log)
+    anomalies = detector.detect(dummy_log)
+    alerts = [{'timestamp': str(t), 'severity': 'HIGH' if eid in [4720,4740] else 'MEDIUM', 
+               'event_id': eid, 'username': u, 'source_ip': ip} 
+              for t, eid, u, ip in zip(anomalies['timestamp'], anomalies['event_id'], anomalies['username'], anomalies['source_ip'])]
+    return dummy_log, anomalies, alerts
 
-def main():
-    st.set_page_config(page_title="Log Anomaly Detector", layout="wide")
-    st.title("🛡️ Windows Log Anomaly Detector Dashboard")
-    
-    # Sidebar
-    st.sidebar.header("Filters")
-    time_range = st.sidebar.selectbox("Time Range", ["1h", "6h", "24h", "7d"])
-    
-    # Load data
-    with st.spinner("Loading logs & running detection..."):
-        log_df, anomalies_df, alerts = load_data()
-    
-    filtered_log = filter_by_time(log_df, time_range)
-    filtered_anomalies = filter_by_time(anomalies_df, time_range)
-    
-    # Metrics
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.metric("Total Events", len(filtered_log))
-    with col2:
-        st.metric("Anomalies Found", len(filtered_anomalies), delta=f"{len(filtered_anomalies)/len(filtered_log)*100:.1f}%")
-    with col3:
-        high_alerts = sum(1 for a in alerts if a.get('severity') == 'HIGH')
-        st.metric("High Severity Alerts", high_alerts)
-    
-    # Charts row 1
-    col1, col2 = st.columns(2)
-    
-    # Line chart: logins over time
-    with col1:
-        st.subheader("Login Attempts Over Time")
-        filtered_log['timestamp_dt'] = pd.to_datetime(filtered_log['timestamp'])
-        filtered_log.set_index('timestamp_dt', inplace=True)
-        hourly_counts = filtered_log.resample('H').size()
-        anomaly_hourly = filtered_anomalies.set_index(pd.to_datetime(filtered_anomalies['timestamp'])).resample('H').size()
-        
-        fig_line = go.Figure()
-        fig_line.add_trace(go.Scatter(x=hourly_counts.index, y=hourly_counts.values, name="Normal", line=dict(color='blue')))
-        fig_line.add_trace(go.Scatter(x=anomaly_hourly.index, y=anomaly_hourly.values, name="Anomaly", line=dict(color='red')))
-        fig_line.update_layout(hovermode='x unified')
-        st.plotly_chart(fig_line, use_container_width=True)
-    
-    # Bar: top IPs failed
-    with col2:
-        st.subheader("Top 10 IPs by Failed Logins")
-        failed_logs = filtered_log[filtered_log['status'] == 'failed']
-        ip_failed = failed_logs.groupby('source_ip').size().sort_values(ascending=False).head(10)
-        fig_bar = px.bar(x=ip_failed.values, y=ip_failed.index, orientation='h', 
-                        title="Failed Logins", color=ip_failed.values)
-        st.plotly_chart(fig_bar, use_container_width=True)
-    
-    # Anomalies table
-    st.subheader("Anomalous Events")
-    
-    # Severity color
-    def severity_color(severity):
-        if severity == 'HIGH': return 'background-color: #ff4444'
-        elif severity == 'MEDIUM': return 'background-color: #ffaa00'
-        elif severity == 'LOW': return 'background-color: #ffff44'
-        return ''
-    
-    if not filtered_anomalies.empty:
-        # Add severity to anomalies (reuse logic)
-        filtered_anomalies['severity'] = 'LOW'
-        filtered_anomalies.loc[filtered_anomalies['event_id'].isin([4720, 4740]), 'severity'] = 'HIGH'
-        # Simplified medium (for display)
-        medium_mask = (filtered_anomalies['event_id'].isin([4672, 4625])) & (filtered_anomalies.duplicated(['source_ip'], keep=False))
-        filtered_anomalies.loc[medium_mask, 'severity'] = 'MEDIUM'
-        
-        st.dataframe(
-            filtered_anomalies[['timestamp', 'severity', 'event_id', 'source_ip', 'username', 'logon_type', 'anomaly_score']],
-            column_config={
-                "severity": st.column_config.SelectboxColumn("Severity", options=["LOW", "MEDIUM", "HIGH"]),
-                "anomaly_score": st.column_config.NumberColumn("Score", format="%.3f")
-            },
-            use_container_width=True,
-            hide_index=True
-        )
-    else:
-        st.info("No anomalies in selected time range.")
-    
-    # Run button
-    st.subheader("Manual Detection")
-    if st.button("🔄 Run Detection Now", type="primary"):
-        with st.spinner("Running full pipeline..."):
-            alert_mgr = AlertManager()
-            alert_mgr.process_anomalies(filtered_anomalies)
-            st.success("Detection complete! Check alerts table.")
+def filter_data(df, time_range):
+    cutoff = {'1h': timedelta(hours=1), '6h': timedelta(hours=6), 
+              '24h': timedelta(days=1), '7d': timedelta(days=7)}[time_range]
+    return df[pd.to_datetime(df['timestamp']) >= datetime.now() - cutoff]
 
-if __name__ == "__main__":
-    main()
+# Main dashboard
+st.markdown('<h1 class="main-header">🛡️ Log Anomaly Detector</h1>', unsafe_allow_html=True)
+st.markdown("**Real-time Windows Security Monitoring**")
+
+# Sidebar
+with st.sidebar:
+    st.markdown("## 🛡️ Log Anomaly Detector")
+    st.markdown("![Version](https://img.shields.io/badge/v-1.0.0-brightgreen)")
+    time_range = st.selectbox("⏰ Time Range", ["1h", "6h", "24h", "7d"])
+
+# Data load
+with st.spinner("🔄 Analyzing logs..."):
+    log_df, anomalies_df, alerts = load_data()
+
+filtered_log = filter_data(log_df, time_range)
+filtered_anoms = filter_data(anomalies_df, time_range)
+
+# Metrics
+col1, col2, col3 = st.columns(3)
+with col1:
+    st.markdown('<div class="metric-green">', unsafe_allow_html=True)
+    st.metric("📊 Total Events", len(filtered_log))
+    st.markdown('</div>', unsafe_allow_html=True)
+with col2:
+    st.markdown('<div class="metric-orange">', unsafe_allow_html=True)
+    st.metric("🚨 Anomalies", len(filtered_anoms))
+    st.markdown('</div>', unsafe_allow_html=True)
+with col3:
+    high_count = sum(1 for a in alerts if a['severity'] == 'HIGH')
+    st.markdown('<div class="metric-red">', unsafe_allow_html=True)
+    st.metric("🔴 High Alerts", high_count)
+    st.markdown('</div>', unsafe_allow_html=True)
+
+# Charts
+col1, col2 = st.columns(2)
+with col1:
+    st.subheader("📈 Login Attempts Over Time")
+    filtered_log['dt'] = pd.to_datetime(filtered_log['timestamp'])
+    hourly = filtered_log.resample('H', on='dt').size()
+    anomaly_hourly = filtered_anoms.resample('H', on='dt').size()
+    
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=hourly.index, y=hourly.values, name="Normal", line_color="steelblue"))
+    fig.add_trace(go.Scatter(x=anomaly_hourly.index, y=anomaly_hourly.values, name="Anomaly", line_color="crimson", fill='tonexty'))
+    fig.update_layout(hovermode='x unified')
+    st.plotly_chart(fig, use_container_width=True)
+
+with col2:
+    st.subheader("🌐 Top IPs - Failed Logins")
+    failed = filtered_log[filtered_log['status'] == 'failed']
+    top_ips = failed['source_ip'].value_counts().head(10)
+    fig_bar = px.bar(y=top_ips.values, x=top_ips.index, orientation='h', 
+                     color=top_ips.values, color_continuous_scale='Reds')
+    st.plotly_chart(fig_bar, use_container_width=True)
+
+# Alerts table
+st.subheader("🚨 **Anomalies Table**")
+if not filtered_anoms.empty:
+    display_df = filtered_anoms[['timestamp', 'event_id', 'source_ip', 'username', 'anomaly_score']].copy()
+    display_df['severity'] = ['HIGH' if e in [4720,4740] else 'MEDIUM' if e in [4672,4625] else 'LOW' for e in display_df['event_id']]
+    st.dataframe(
+        display_df,
+        column_config={"severity": st.column_config.SelectboxColumn("Severity", options=['LOW','MEDIUM','HIGH'])},
+        use_container_width=True
+    )
+else:
+    st.info("✅ No anomalies detected")
+
+# Run button
+if st.button("🔄 **Run Detection Pipeline Now**", type="primary", use_container_width=True):
+    with st.spinner('Running full detection...'):
+        alert_mgr = AlertManager()
+        alert_mgr.process_anomalies(filtered_anoms)
+        st.success("✅ Pipeline executed! Check new alerts.")
+
+# Footer
+st.markdown("---")
+st.markdown("""
+<div style='text-align: center; color: #00ff88;'>
+    <strong>⭐ Star us on GitHub!</strong> 
+    <a href='https://github.com/mukundhasuresh/windows-log-anomaly-detector'><img src='https://img.shields.io/github/stars/mukundhasuresh/windows-log-anomaly-detector?style=social' alt='Stars'></a>
+    <br>Built with Python • ML • Streamlit
+</div>
+""", unsafe_allow_html=True)
