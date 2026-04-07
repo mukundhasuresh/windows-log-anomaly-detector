@@ -10,6 +10,7 @@
 - [x] Create main.py with header comment, imports, and basic entrypoint calling all modules
 - [x] Install dependencies: pip install -r requirements.txt 
 - [ ] Test main.py with LogReader
+- [x] Fix syntax and test LogReader standalone
 - [x] Implement LogReader class in src/log_reader.py
 - [ ] Update main.py to use LogReader
 - [ ] streamlit run src/dashboard.py
