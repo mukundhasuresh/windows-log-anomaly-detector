@@ -6,14 +6,15 @@ Handles different log types like System, Application, Security.
 import win32evtlog
 import pandas as pd
 import win32evtlogutil
+import re
 from typing import List, Dict
 import datetime
 
 class LogReader:
-    \"\"\"
+    """
     Windows Security Log Reader using pywin32.
     Filters specific Event IDs for anomaly detection baseline.
-    \"\"\"
+    """
 
     TARGET_EVENT_IDS = [4624, 4625, 4672, 4720, 4740]
 
@@ -21,19 +22,18 @@ class LogReader:
         self.log_type = log_type
 
     def read_events(self, max_count: int = 10000) -> pd.DataFrame:
-        \"\"\"
+        """
         Read and parse Security events into DataFrame.
         
         Columns: timestamp, event_id, source_ip, username, logon_type, status
         
         Handles permission/empty logs.
-        \"\"\"
+        """
         events_data = []
         try:
             hand = win32evtlog.OpenEventLog(None, self.log_type)
             flags = win32evtlog.EVENTLOG_BACKWARDS_READ | win32evtlog.EVENTLOG_SEQUENTIAL_READ
             total = 0
-            import re
             while total < max_count:
                 event_list = win32evtlog.ReadEventLog(hand, flags, 0)
                 if not event_list:
@@ -48,13 +48,13 @@ class LogReader:
                             message = ''
                         
                         # Regex parse Security event fields
-                        username_match = re.search(r'Account Name[:\-]?\s*([^\r\n\s]+(?:\\[^\\\r\n]+)?)', message, re.I)
+                        username_match = re.search(r'Account Name[:\\-]?\\s*([^\\r\\n\\s]+(?:\\\\[^\\\\\\r\\n]+)?)', message, re.I)
                         username = username_match.group(1) if username_match else ''
                         
-                        ip_match = re.search(r'(?:Source Network Address|IpAddress|Network Address)[:\-]?\s*([0-9a-f.:]+)', message, re.I)
+                        ip_match = re.search(r'(?:Source Network Address|IpAddress|Network Address)[:\\-]?\\s*([0-9a-f.:]+)', message, re.I)
                         source_ip = ip_match.group(1) if ip_match else ''
                         
-                        logon_match = re.search(r'Logon Type[:\-]?\s*(\d+)', message, re.I)
+                        logon_match = re.search(r'Logon Type[:\\-]?\\s*(\\d+)', message, re.I)
                         logon_type = int(logon_match.group(1)) if logon_match else 0
                         
                         status = 'failed' if event_id == 4625 else 'success'
@@ -82,9 +82,9 @@ class LogReader:
         return df
 
     def export_baseline(self, max_count: int = 10000):
-        \"\"\"
+        """
         Export filtered events to data/baseline_events.csv
-        \"\"\"
+        """
         df = self.read_events(max_count)
         output_path = 'data/baseline_events.csv'
         df.to_csv(output_path, index=False)
