@@ -68,11 +68,11 @@ class AlertManager:
         
         for _, row in df.iterrows():
             table.add_row(
-                row['timestamp'],
+                str(row['timestamp']),
                 row['severity'],
                 str(row['event_id']),
-                row['username'],
-                row['source_ip']
+                str(row['username']),
+                str(row['source_ip'])
             )
         self.console.print(table)
 

@@ -127,9 +127,12 @@ with col3:
 col1, col2 = st.columns(2)
 with col1:
     st.subheader("📈 Login Attempts Over Time")
+    filtered_log = filtered_log.copy()
     filtered_log['dt'] = pd.to_datetime(filtered_log['timestamp'])
-    hourly = filtered_log.resample('H', on='dt').size()
-    anomaly_hourly = filtered_anoms.resample('H', on='dt').size()
+    filtered_anoms = filtered_anoms.copy()
+    filtered_anoms['dt'] = pd.to_datetime(filtered_anoms['timestamp'])
+    hourly = filtered_log.set_index('dt').resample('H').size()
+    anomaly_hourly = filtered_anoms.set_index('dt').resample('H').size()
     
     fig = go.Figure()
     fig.add_trace(go.Scatter(x=hourly.index, y=hourly.values, name="Normal", line_color="steelblue"))
@@ -141,8 +144,15 @@ with col2:
     st.subheader("🌐 Top IPs - Failed Logins")
     failed = filtered_log[filtered_log['status'] == 'failed']
     top_ips = failed['source_ip'].value_counts().head(10)
-    fig_bar = px.bar(y=top_ips.values, x=top_ips.index, orientation='h', 
-                     color=top_ips.values, color_continuous_scale='Reds')
+    top_ips_df = top_ips.reset_index()
+    top_ips_df.columns = ['source_ip', 'count']
+    fig_bar = px.bar(
+        top_ips_df,
+        x='count',
+        y='source_ip',
+        orientation='h',
+        color_discrete_sequence=['#00ff88']
+    )
     st.plotly_chart(fig_bar, use_container_width=True)
 
 # Alerts table
