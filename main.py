@@ -5,7 +5,7 @@ Orchestrates log reading, anomaly detection, alerting, and dashboard.
 
 import pandas as pd
 from src.log_reader import LogReader
-from src.anomaly_detector import train_model, detect_anomalies
+from src.anomaly_detector import AnomalyDetector
 from src.alerts import send_alert, setup_alert_channel
 from src.dashboard import run_dashboard
 
@@ -17,30 +17,31 @@ def main():
     print("Reading Security logs...")
     log_reader = LogReader()
     try:
-        parsed_df = log_reader.read_events()
-        print(f"Loaded {len(parsed_df)} Security events.")
+        log_df = log_reader.read_events()
+        print(f"Loaded {len(log_df)} Security events.")
     except PermissionError as e:
         print(str(e))
-        parsed_df = pd.DataFrame(columns=['timestamp', 'event_id', 'source_ip', 'username', 'logon_type', 'status'])
+        log_df = pd.DataFrame(columns=['timestamp', 'event_id', 'source_ip', 'username', 'logon_type', 'status'])
         print("Using dummy DataFrame (run as admin for real logs).")
     except Exception as e:
         print(f"Log read error: {e}")
-        parsed_df = pd.DataFrame()
+        log_df = pd.DataFrame()
     
-    # Train model (stub - handles empty df)
-    print("Training model...")
-    model, scaler = train_model(parsed_df)
+    # Anomaly detection
+    print("Fitting anomaly detector...")
+    detector = AnomalyDetector(contamination=0.05)
+    labeled_df = detector.fit(log_df)
     
-    # Detect
     print("Detecting anomalies...")
-    anomalies = detect_anomalies(parsed_df, model, scaler)
+    anomalies = detector.detect(log_df)
     
     # Alert
     setup_alert_channel("console")
-    if isinstance(anomalies, pd.DataFrame) and len(anomalies) > 0:
+    if len(anomalies) > 0:
+        print(f"Found {len(anomalies)} anomalies.")
         send_alert(anomalies)
     else:
-        print("No anomalies to alert (stubs).")
+        print("No anomalies detected.")
     
     # Export baseline
     try:
