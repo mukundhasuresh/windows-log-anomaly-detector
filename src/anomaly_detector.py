@@ -83,6 +83,9 @@ class AnomalyDetector:
         if not self.is_fitted:
             raise ValueError("Model not fitted. Call fit first.")
         
+        if df.empty:
+            return pd.DataFrame(columns=['timestamp', 'event_id', 'source_ip', 'username', 'logon_type', 'status', 'anomaly_score', 'label'])
+        
         df = df.copy()
         df['timestamp_dt'] = pd.to_datetime(df['timestamp'], errors='coerce')
         df['login_hour'] = df['timestamp_dt'].dt.hour.fillna(12)
@@ -107,4 +110,6 @@ class AnomalyDetector:
         df['label'] = np.where(predictions == -1, 'anomaly', 'normal')
         
         anomalies = df[df['label'] == 'anomaly'].copy()
+        if anomalies.empty:
+            anomalies = pd.DataFrame(columns=['timestamp', 'event_id', 'source_ip', 'username', 'logon_type', 'status', 'anomaly_score', 'label'])
         return anomalies[['timestamp', 'event_id', 'source_ip', 'username', 'logon_type', 'status', 'anomaly_score', 'label']] 
