@@ -26,7 +26,7 @@ class AnomalyDetector:
 
     def _extract_hour(self, timestamp_dt):
         """Helper to extract hour floor for merge."""
-        return timestamp_dt.dt.floor('H')
+        return timestamp_dt.dt.floor('h')
 
     def fit(self, df: pd.DataFrame) -> pd.DataFrame:
         """
