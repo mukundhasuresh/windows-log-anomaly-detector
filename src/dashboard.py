@@ -142,7 +142,7 @@ col1, col2 = st.columns(2)
 with col1:
     st.subheader("📈 Login Attempts Over Time")
     filtered_log = filtered_log.copy()
-filtered_log['dt'] = pd.to_datetime(filtered_log['timestamp'])
+    filtered_log['dt'] = pd.to_datetime(filtered_log['timestamp'])
     filtered_anoms = filtered_anoms.copy()
     filtered_anoms['dt'] = pd.to_datetime(filtered_anoms['timestamp'])
     hourly = filtered_log.set_index('dt').resample('h').size()
